@@ -247,6 +247,21 @@ async function replicateToSingleFollower(
   }
 
   try {
+    // Check if copy trading is active for this follower
+    const consentRows = await db.query(
+      `SELECT copy_trading_active FROM follower_consents WHERE follower_id = ?`,
+      [follower.id]
+    ) as Array<any>;
+    
+    const consent = consentRows[0];
+    if (consent && !consent.copy_trading_active) {
+      return {
+        follower_id: follower.id,
+        status: 'SKIPPED',
+        reason: 'Copy trading disabled for this follower',
+      };
+    }
+
     // Validate against risk config
     const validation = validateFollowerOrder(masterTrade, follower.risk_config);
     if (!validation.valid) {

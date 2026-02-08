@@ -173,13 +173,18 @@ CREATE TABLE IF NOT EXISTS follower_consents (
   id VARCHAR(50) NOT NULL PRIMARY KEY,
   follower_id VARCHAR(50) NOT NULL,
   trade_replication_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  copy_trading_active BOOLEAN NOT NULL DEFAULT TRUE,
   consent_given_at TIMESTAMP,
   consent_token VARCHAR(255),
+  copy_trading_stopped_at TIMESTAMP,
+  copy_trading_stopped_by VARCHAR(100),
   ip_address VARCHAR(45),
   user_agent TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE(follower_id),
-  FOREIGN KEY (follower_id) REFERENCES followers(id) ON DELETE CASCADE
+  FOREIGN KEY (follower_id) REFERENCES followers(id) ON DELETE CASCADE,
+  INDEX idx_copy_trading_active (copy_trading_active)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Master Settings (Risk Management & Lots Configuration)
