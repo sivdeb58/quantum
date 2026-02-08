@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { FollowerCardDetailed } from '@/app/(main)/configuration/components/followers-management';
 import type { FollowerAccount } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -88,9 +88,10 @@ export function FollowerCard({ account }: FollowerCardProps) {
             <DialogTrigger asChild>
               <Button variant="ghost">Manage</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-3xl">
+              <DialogContent className="sm:max-w-3xl">
               <DialogHeader>
                 <DialogTitle>Manage {account.name}</DialogTitle>
+                <DialogDescription>Manage API credentials and settings for this follower account.</DialogDescription>
               </DialogHeader>
               <div className="py-4">
                 <FollowerCardDetailed acc={account} trades={[]} removeFollower={() => {}} removeFollowerTrade={() => {}} clearFollowerTrades={() => {}} updateFollowerSettings={() => {}} addFollowerTrade={() => {}} />

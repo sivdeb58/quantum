@@ -1,6 +1,20 @@
 import { NextResponse, NextRequest } from 'next/server';
 import crypto from 'crypto';
 import { saveAccountToken } from '@/lib/alice';
+import fs from 'fs';
+import path from 'path';
+
+const MASTER_FILE = process.env.QUANTUM_MASTER_ACCOUNT_FILE || '.master.account';
+
+function saveMasterAccountId(accountId: string) {
+  try {
+    const p = path.join(process.cwd(), MASTER_FILE);
+    fs.writeFileSync(p, accountId, { encoding: 'utf-8', flag: 'w' });
+    console.log('[OAUTH-CALLBACK] Saved master account:', accountId);
+  } catch (e) {
+    console.error('Failed saving master account id', e);
+  }
+}
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -36,21 +50,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, message: 'No userSession in response', payload }, { status: 502 });
     }
 
-    // Save session token keyed by userId
+    // Save session token keyed by userId (for master account only)
     try {
       saveAccountToken(String(userId), String(userSession));
     } catch (e) {
       console.error('Failed to save account token', e);
     }
 
-    // Create a user object and store in localStorage via redirect
-    // The user will be created as a 'trader' with OAuth authentication
-    const userObj = {
-      id: String(userId),
-      role: 'trader',
-      name: String(userId),
-      authMethod: 'oauth'
-    };
+    // Mark this account as the master account
+    saveMasterAccountId(String(userId));
+    const userObj = { id: String(userId), role: 'master', name: String(userId), authMethod: 'oauth' };
 
     // Trigger a poll request to fetch trades immediately upon login
     try {

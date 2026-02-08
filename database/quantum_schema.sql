@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS order_mappings (
 CREATE TABLE IF NOT EXISTS trade_events (
   id VARCHAR(50) NOT NULL PRIMARY KEY,
   master_order_id VARCHAR(255) NOT NULL,
+  follower_id VARCHAR(50),
   event_type ENUM('PLACE', 'MODIFY', 'EXIT', 'CANCEL') NOT NULL,
   symbol VARCHAR(20) NOT NULL,
   exchange VARCHAR(10),
@@ -153,6 +154,9 @@ CREATE TABLE IF NOT EXISTS trade_events (
   product_type VARCHAR(10),
   order_type VARCHAR(10),
   price DECIMAL(10,2),
+  status ENUM('success', 'warning', 'error') NOT NULL DEFAULT 'success',
+  message TEXT,
+  risk_validated BOOLEAN DEFAULT TRUE,
   total_followers INT DEFAULT 0,
   successful_followers INT DEFAULT 0,
   failed_followers INT DEFAULT 0,
@@ -160,6 +164,7 @@ CREATE TABLE IF NOT EXISTS trade_events (
   processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_master_order (master_order_id),
+  INDEX idx_follower (follower_id),
   INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -175,6 +180,20 @@ CREATE TABLE IF NOT EXISTS follower_consents (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(follower_id),
   FOREIGN KEY (follower_id) REFERENCES followers(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Master Settings (Risk Management & Lots Configuration)
+CREATE TABLE IF NOT EXISTS master_settings (
+  id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  max_quantity_per_trade INT NOT NULL DEFAULT 1000,
+  max_daily_loss_percentage DECIMAL(5,2) NOT NULL DEFAULT 5.00,
+  min_lot_size INT NOT NULL DEFAULT 1,
+  default_lot_multiplier DECIMAL(10,4) NOT NULL DEFAULT 1.0000,
+  auto_liquidate_on_loss BOOLEAN NOT NULL DEFAULT FALSE,
+  max_concurrent_trades INT NOT NULL DEFAULT 10,
+  auto_replicate_new_trades BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Helpful quick queries

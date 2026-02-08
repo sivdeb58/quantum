@@ -6,6 +6,19 @@ import { broadcastTrade } from '../trades-stream/route';
 
 const TOKENS_FILE = process.env.ALICE_OAUTH_TOKENS_FILE || '.alice.tokens.json';
 const INCOMING_FILE = process.env.QUANTUM_ALPHA_INCOMING_FILE || '.alice.incoming.json';
+const MASTER_FILE = process.env.QUANTUM_MASTER_ACCOUNT_FILE || '.master.account';
+
+function readMasterAccountId(): string | null {
+  try {
+    if (fs.existsSync(MASTER_FILE)) {
+      const content = fs.readFileSync(MASTER_FILE, 'utf-8').trim();
+      return content || null;
+    }
+  } catch (e) {
+    console.warn('Failed reading master account file', e);
+  }
+  return null;
+}
 
 function readTokens(): Record<string, string> {
   try {
@@ -42,11 +55,16 @@ export async function POST(req: NextRequest) {
     const tokens = readTokens();
     const accountIds = Object.keys(tokens);
     if (accountIds.length === 0) return NextResponse.json({ ok: true, message: 'no accounts' });
+      // Prioritize master account polling
+      const masterAccountId = readMasterAccountId();
+      const sortedAccountIds = masterAccountId && accountIds.includes(masterAccountId)
+        ? [masterAccountId, ...accountIds.filter(id => id !== masterAccountId)]
+        : accountIds;
 
     const incoming = readIncoming();
 
     let totalNew = 0;
-    for (const accId of accountIds) {
+      for (const accId of sortedAccountIds) {
       try {
         const trades = await getTradesForAccount(accId);
         incoming[accId] = incoming[accId] || [];
@@ -63,7 +81,7 @@ export async function POST(req: NextRequest) {
         });
 
         // Broadcast new trades
-        newTrades.forEach(nt => broadcastTrade({ ...nt, account: accId }));
+              newTrades.forEach(nt => broadcastTrade({ ...nt, account: accId, isMaster: accId === masterAccountId }));
       } catch (e) {
         console.error('Failed fetching trades for', accId, e);
       }

@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     const rows = await db.query(
       `SELECT * FROM follower_consents WHERE follower_id = ?`,
       [followerId]
-    );
+    ) as Array<any>;
 
     const consent = rows[0] || null;
 

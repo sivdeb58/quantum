@@ -147,3 +147,11 @@ header, nav, footer, main, .container {
   max-width: 100vw;
   box-sizing: border-box;
 }
+
+/* Hide Next.js dev tools indicator */
+#devtools-indicator,
+[id="devtools-indicator"],
+[data-nextjs-toast="true"] {
+  display: none !important;
+}
+

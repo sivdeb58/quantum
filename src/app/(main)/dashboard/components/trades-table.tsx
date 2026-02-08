@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Copy } from "lucide-react";
+import { CopyTradeDialog } from "./copy-trade-dialog";
 
 interface TradesTableProps {
   showAccount?: boolean;
@@ -33,6 +35,8 @@ export function TradesTable({ showAccount = true }: TradesTableProps) {
   const [loading, setLoading] = useState(true);
   const [masterTrades, setMasterTrades] = useState<RemoteTrade[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTrade, setSelectedTrade] = useState<RemoteTrade | null>(null);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
 
   const fetchTrades = async () => {
     setLoading(true);
@@ -155,13 +159,14 @@ export function TradesTable({ showAccount = true }: TradesTableProps) {
               <TableHead className="text-right">Qty</TableHead>
               <TableHead className="text-right">Traded Qty</TableHead>
               <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-center">Action</TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
             {masterTrades.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   No trades found.
                 </TableCell>
               </TableRow>
@@ -189,12 +194,30 @@ export function TradesTable({ showAccount = true }: TradesTableProps) {
                   <TableCell className="text-right">
                     ₹{trade.price.toFixed(2)}
                   </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedTrade(trade);
+                        setCopyDialogOpen(true);
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       )}
+
+      <CopyTradeDialog
+        open={copyDialogOpen}
+        onOpenChange={setCopyDialogOpen}
+        trade={selectedTrade}
+      />
     </div>
   );
 }

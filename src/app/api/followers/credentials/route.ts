@@ -45,9 +45,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { followerId, clientId, apiKey, accessToken, brokerSessionId } = body;
 
-    if (!followerId || !clientId || !apiKey || !accessToken) {
+    // Accept followerId and accessToken as mandatory; clientId/apiKey may be optional for OAuth flows
+    if (!followerId || !accessToken) {
       return NextResponse.json(
-        { ok: false, message: 'Missing required fields: followerId, clientId, apiKey, accessToken' },
+        { ok: false, message: 'Missing required fields: followerId, accessToken' },
         { status: 400 }
       );
     }
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
     const credentialId = generateId();
 
     // Encrypt sensitive fields
-    const encryptedApiKey = encryptSensitive(apiKey);
+    const encryptedApiKey = encryptSensitive(apiKey || '');
     const encryptedAccessToken = encryptSensitive(accessToken);
 
     // Insert credential record
@@ -82,7 +83,7 @@ export async function POST(req: NextRequest) {
       [
         credentialId,
         followerId,
-        clientId,
+        clientId || '',
         encryptedApiKey,
         encryptedAccessToken,
         brokerSessionId || null,
@@ -90,6 +91,22 @@ export async function POST(req: NextRequest) {
     );
 
     console.log(`[CREDENTIALS] Added/updated credentials for follower: ${followerId}`);
+
+    // Also persist access token to token file for polling/broadcasting compatibility
+    try {
+      const TOKENS_FILE = process.env.ALICE_OAUTH_TOKENS_FILE || '.alice.tokens.json';
+      const tf = require('path').join(process.cwd(), TOKENS_FILE);
+      let tokens: Record<string, string> = {};
+      if (require('fs').existsSync(tf)) {
+        try { tokens = JSON.parse(require('fs').readFileSync(tf, 'utf-8') || '{}'); } catch(e) { tokens = {}; }
+      }
+      if (accessToken) {
+        tokens[followerId] = accessToken;
+        require('fs').writeFileSync(tf, JSON.stringify(tokens, null, 2), { encoding: 'utf-8', flag: 'w' });
+      }
+    } catch (e) {
+      console.warn('Failed writing access token to tokens file', e);
+    }
 
     return NextResponse.json({
       ok: true,

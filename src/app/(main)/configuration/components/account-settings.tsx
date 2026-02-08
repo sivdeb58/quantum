@@ -34,7 +34,7 @@ function ManageFollowerDialog({ account }: { account: any }) {
     const [clientId, setClientId] = useState(account.clientId || '');
     const [apiKey, setApiKey] = useState(account.apiKey || '');
     const [consentGiven, setConsentGiven] = useState(account.consentGiven || false);
-    const [sessionToken, setSessionToken] = useState(account.sessionToken || '');
+    const [brokerSessionId, setBrokerSessionId] = useState(account.brokerSessionId || '');
     const [open, setOpen] = useState(false);
 
     const handleSave = async () => {
@@ -56,7 +56,8 @@ function ManageFollowerDialog({ account }: { account: any }) {
                     followerId: account.id,
                     clientId,
                     apiKey,
-                    brokerSessionId: sessionToken,
+                    brokerSessionId: brokerSessionId || undefined,
+                    accessToken: 'api_auth',
                 }),
             });
 
@@ -103,12 +104,12 @@ function ManageFollowerDialog({ account }: { account: any }) {
                 <DialogHeader>
                     <DialogTitle>Manage {account.name}</DialogTitle>
                     <DialogDescription>
-                        Update API credentials and consent for this account.
+                        Update Client ID and API Key for this account.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="manage-client-id">Client ID <span className="text-red-500">*</span></Label>
+                        <Label htmlFor="manage-client-id">Client ID / API ID <span className="text-red-500">*</span></Label>
                         <Input 
                             id="manage-client-id" 
                             value={clientId} 
@@ -117,23 +118,22 @@ function ManageFollowerDialog({ account }: { account: any }) {
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="manage-api-key">API Key <span className="text-red-500">*</span></Label>
+                        <Label htmlFor="manage-api-key">API Key / Secret <span className="text-red-500">*</span></Label>
                         <Input 
                             id="manage-api-key" 
                             value={apiKey} 
                             onChange={(e) => setApiKey(e.target.value)} 
-                            placeholder="API Key from broker" 
+                            placeholder="API Key / Secret from broker" 
                             type="password"
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="manage-session-token">Session Token (Optional)</Label>
+                        <Label htmlFor="manage-broker-session-id">Broker Session ID (Optional)</Label>
                         <Input 
-                            id="manage-session-token" 
-                            value={sessionToken} 
-                            onChange={(e) => setSessionToken(e.target.value)} 
-                            placeholder="Session token from Alice Blue"
-                            type="password"
+                            id="manage-broker-session-id" 
+                            value={brokerSessionId} 
+                            onChange={(e) => setBrokerSessionId(e.target.value)} 
+                            placeholder="Broker session ID if required"
                         />
                     </div>
                     <div className="space-y-2">
@@ -160,7 +160,7 @@ function ManageFollowerDialog({ account }: { account: any }) {
     );
 }
 
-function AddFollowerDialog() {
+export function AddFollowerDialog() {
     const { addAccount } = useAccount();
     const { toast } = useToast();
     const [accountType, setAccountType] = useState('Follower');
@@ -169,13 +169,15 @@ function AddFollowerDialog() {
     const [telegramId, setTelegramId] = useState('');
     const [clientId, setClientId] = useState('');
     const [apiKey, setApiKey] = useState('');
+    const [brokerSessionId, setBrokerSessionId] = useState('');
     const [consentGiven, setConsentGiven] = useState(false);
-    const [sessionToken, setSessionToken] = useState('');
     
     const [open, setOpen] = useState(false);
     const [newCreds, setNewCreds] = useState<{username: string, password: string} | null>(null);
 
-    const handleAddFollower = () => {
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleAddFollower = async () => {
         if (!accountId || !accountName || !clientId || !apiKey) {
             toast({
                 variant: 'destructive',
@@ -194,34 +196,56 @@ function AddFollowerDialog() {
             return;
         }
 
-        const result = addAccount({ 
+        setIsSubmitting(true);
+        try {
+          // Persist credentials to server (DB)
+          const res = await fetch('/api/followers/credentials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              followerId: accountId,
+              clientId,
+              apiKey,
+              accessToken: 'api_auth',
+              brokerSessionId: brokerSessionId || undefined,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) throw new Error(data.message || 'Failed saving credentials');
+
+          // Add to local UI context
+          const result = addAccount({ 
             id: accountId, 
             name: accountName, 
             telegramId: telegramId || undefined, 
             initialBalance: 0,
             lotMultiplier: 1,
-          clientId: clientId,
-          apiKey: apiKey,
-          consentGiven: consentGiven,
-          sessionToken: sessionToken || undefined,
-        }, accountType as 'Follower' | 'Master');
+            clientId: clientId,
+            apiKey: apiKey,
+            consentGiven: consentGiven,
+          }, accountType as 'Follower' | 'Master');
 
-        if (result.success && result.username && result.password) {
+          if (result.success && result.username && result.password) {
             setNewCreds({ username: result.username, password: result.password });
-            setAccountId('');
-            setAccountName('');
-            setTelegramId('');
-            setClientId('');
-            setApiKey('');
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Error',
-                description: result.message,
-            });
-            // Reset form on error
-            setClientId('');
-            setApiKey('');
+          } else if (result.success) {
+            // No generated creds (e.g., updated existing) — close dialog
+            setNewCreds(null);
+            setOpen(false);
+          } else {
+            throw new Error(result.message || 'Failed adding account locally');
+          }
+
+          // clear form
+          setAccountId('');
+          setAccountName('');
+          setTelegramId('');
+          setClientId('');
+          setApiKey('');
+          setBrokerSessionId('');
+        } catch (err: any) {
+          toast({ variant: 'destructive', title: 'Error', description: err.message || String(err) });
+        } finally {
+          setIsSubmitting(false);
         }
     };
     
@@ -287,8 +311,12 @@ function AddFollowerDialog() {
                           <Input id="client-id" value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Client ID from broker" />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="api-key">API Key <span className="text-red-500">*</span></Label>
-                          <Input id="api-key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="API Key from broker" />
+                          <Label htmlFor="api-key">API Key / Secret <span className="text-red-500">*</span></Label>
+                          <Input id="api-key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="API Key / Secret from broker" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="broker-session-id">Broker Session ID (Optional)</Label>
+                          <Input id="broker-session-id" value={brokerSessionId} onChange={(e) => setBrokerSessionId(e.target.value)} placeholder="Broker session ID if required" />
                         </div>
                         <div className="space-y-2">
                           <Label>User Consent (VERY IMPORTANT)</Label>
@@ -297,16 +325,12 @@ function AddFollowerDialog() {
                             <Label htmlFor="consent" className="text-sm">I consent to allow trade replication to this account.</Label>
                           </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="session-token">Session Token (Optional)</Label>
-                          <Input id="session-token" value={sessionToken} onChange={(e) => setSessionToken(e.target.value)} placeholder="Paste session token from Alice Blue login" />
-                        </div>
                     </div>
                     <DialogFooter>
                       <DialogClose asChild>
-                        <Button variant="ghost">Cancel</Button>
+                        <Button variant="ghost" disabled={isSubmitting}>Cancel</Button>
                       </DialogClose>
-                      <Button onClick={handleAddFollower}>Add Account</Button>
+                      <Button onClick={handleAddFollower} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Add Account'}</Button>
                     </DialogFooter>
                 </>
             ) : (
@@ -436,10 +460,6 @@ export function AccountSettings() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Consent:</span>
                       <span>{account.consentGiven ? 'Given' : 'Not Given'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Session Token:</span>
-                      <span className="font-mono">{account.sessionToken ? 'Present' : 'None'}</span>
                     </div>
                  </div>
               </CardContent>

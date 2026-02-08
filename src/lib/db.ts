@@ -6,3 +6,8 @@ export const db = mysql.createPool({
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
 });
+
+// Backwards-compatible helper used by many routes expecting getDatabase()
+export async function getDatabase() {
+  return db;
+}

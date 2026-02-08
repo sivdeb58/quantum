@@ -192,18 +192,33 @@ export async function loadActiveFollowers(): Promise<FollowerAccount[]> {
 }
 
 /**
- * Process a master trade and replicate to all followers
+ * Process a master trade and replicate to all followers (or selected followers)
  */
 export async function replicateTradeToFollowers(
   masterTrade: MasterTrade,
-  tradeEventId: string
+  tradeEventId: string,
+  followerIds?: string[]
 ): Promise<ReplicationResult[]> {
   const results: ReplicationResult[] = [];
 
   try {
     const followers = await loadActiveFollowers();
 
-    for (const follower of followers) {
+    // Filter by followerIds if provided
+    const targetFollowers = followerIds && followerIds.length > 0
+      ? followers.filter(f => followerIds.includes(f.id))
+      : followers;
+
+    // If followerIds were provided but no followers found, return explicit failure
+    if (followerIds && followerIds.length > 0 && targetFollowers.length === 0) {
+      return followerIds.map(fid => ({
+        follower_id: fid,
+        status: 'FAILED',
+        reason: 'Follower not found or not active',
+      }));
+    }
+
+    for (const follower of targetFollowers) {
       const result = await replicateToSingleFollower(masterTrade, follower, tradeEventId);
       results.push(result);
     }

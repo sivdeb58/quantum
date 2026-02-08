@@ -15,7 +15,6 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Logo } from '@/components/logo';
 import { NavItems } from './components/nav-items';
 import { useAuth } from '@/context/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
@@ -41,7 +40,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <Sidebar>
           <SidebarHeader className="p-4">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <Logo />
               <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">QuantumAlphaIn</span>
             </Link>
           </SidebarHeader>
