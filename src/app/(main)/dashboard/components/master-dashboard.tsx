@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { MasterConnectionStatus } from './master-connection-status';
 import { AddFollowerDialog } from '@/app/(main)/configuration/components/account-settings';
+import { FollowerCardWithControls } from './follower-card-with-controls';
 import { X } from 'lucide-react';
 
 export function MasterDashboard() {
@@ -136,35 +137,11 @@ export function MasterDashboard() {
             {/* Followers Grid */}
             <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 mb-6">
               {followerAccounts.map((follower: any) => (
-                <Card
+                <FollowerCardWithControls
                   key={follower.id}
-                  className="cursor-pointer hover:shadow-lg hover:border-primary transition-all"
-                  onClick={() => setSelectedFollower(follower)}
-                >
-                  <CardContent className="pt-6">
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-semibold text-sm">{follower.name}</h3>
-                        <p className="text-xs text-muted-foreground">{follower.id}</p>
-                      </div>
-                      <div className="border-t pt-2 space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Client ID:</span>
-                          <span className="font-mono truncate">{follower.clientId ? follower.clientId.slice(0, 8) + '...' : '-'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Status:</span>
-                          <span className={follower.consentGiven ? 'text-green-600 font-medium' : 'text-yellow-600 font-medium'}>
-                            {follower.consentGiven ? '✓ Active' : '⚠ Pending'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-xs text-center text-muted-foreground border-t pt-2">
-                        Click to view details
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  follower={follower}
+                  onSelect={setSelectedFollower}
+                />
               ))}
             </div>
 
